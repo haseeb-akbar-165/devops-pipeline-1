@@ -35,3 +35,19 @@ jobs:
           chmod +x cloudflared
           # Start the tunnel. This step will stay running and output the URL.
           ./cloudflared tunnel --url http://localhost:5000
+      - name: Create public URL with Cloudflare Tunnel
+        run: |
+          # Run cloudflared in the background
+          cloudflared tunnel --url http://localhost:8000 > /tmp/cloudflared.log 2>&1 &
+          # Wait up to 10 seconds for the URL to appear in the logs
+          echo "Waiting for tunnel to start..."
+          while ! grep -q "https://" /tmp/cloudflared.log && [ $SECONDS -lt 10 ]; do sleep 1; done
+          # Extract the URL
+          URL=$(grep -oP 'https://.*\.trycloudflare.com' /tmp/cloudflared.log)
+
+          # Print it so your later steps can use it (e.g., to run tests)
+          echo "✅ Tunnel URL: $URL"
+          echo "TUNNEL_URL=$URL" >> $GITHUB_ENV
+
+          # Kill cloudflared so GitHub Actions considers this step 'finished'
+          pkill cloudflared
